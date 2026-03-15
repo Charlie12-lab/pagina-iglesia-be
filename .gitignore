@@ -1,0 +1,45 @@
+## Build output
+bin/
+obj/
+out/
+
+## Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.pidb
+
+## Logs
+*.log
+logs/
+
+## EF Core Migrations temporales (mantener las reales)
+# No ignorar Migrations/ — son parte del proyecto
+
+## Secretos y configuración local
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+*.pfx
+*.p12
+secrets.json
+
+## NuGet
+*.nupkg
+.nuget/
+packages/
+
+## Test results
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+
+## Docker
+.dockerignore
+
+## OS
+.DS_Store
+Thumbs.db
