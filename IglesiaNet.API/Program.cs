@@ -1,6 +1,17 @@
 using System.Text;
-using IglesiaNet.API.Data;
-using IglesiaNet.API.Services;
+using IglesiaNet.Application.Auth;
+using IglesiaNet.Application.Blogs;
+using IglesiaNet.Application.Churches;
+using IglesiaNet.Application.Common;
+using IglesiaNet.Application.Events;
+using IglesiaNet.Domain.Blogs;
+using IglesiaNet.Domain.Churches;
+using IglesiaNet.Domain.Events;
+using IglesiaNet.Domain.Users;
+using IglesiaNet.Infrastructure.Authentication;
+using IglesiaNet.Infrastructure.Persistence.MongoDB;
+using IglesiaNet.Infrastructure.Persistence.SQL;
+using IglesiaNet.Infrastructure.Persistence.SQL.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,17 +19,28 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── Base de datos SQL Server ───────────────────────────────────────────────
+// ─── SQL Server (EF Core) ────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
 
 // ─── MongoDB ────────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<MongoDbContext>();
 
-// ─── Servicios ──────────────────────────────────────────────────────────────
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<EventService>();
-builder.Services.AddScoped<BlogService>();
+// ─── Repositorios (Infrastructure → Domain interfaces) ───────────────────────
+builder.Services.AddScoped<IChurchRepository, ChurchRepository>();
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+
+// ─── Servicios de infraestructura ───────────────────────────────────────────
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtTokenProvider, JwtTokenProvider>();
+
+// ─── Application Services ────────────────────────────────────────────────────
+builder.Services.AddScoped<AuthAppService>();
+builder.Services.AddScoped<ChurchAppService>();
+builder.Services.AddScoped<EventAppService>();
+builder.Services.AddScoped<BlogAppService>();
 
 // ─── JWT Authentication ─────────────────────────────────────────────────────
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -45,12 +67,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-    {
-        policy.WithOrigins(
-                builder.Configuration["AllowedOrigins"] ?? "http://localhost:5173")
+        policy.WithOrigins(builder.Configuration["AllowedOrigins"] ?? "http://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+              .AllowAnyMethod());
 });
 
 // ─── Controllers + Swagger ───────────────────────────────────────────────────
@@ -62,15 +81,13 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "IglesiaNet API",
         Version = "v1",
-        Description = "API para la plataforma de iglesias"
+        Description = "API para la plataforma de iglesias — arquitectura DDD"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header. Ejemplo: 'Bearer {token}'",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Name = "Authorization", In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey, Scheme = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -86,14 +103,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── Auto-migrar base de datos ───────────────────────────────────────────────
+// ─── Auto-migrar SQL Server ──────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
 
-// ─── Middleware ──────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -105,5 +121,4 @@ app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();

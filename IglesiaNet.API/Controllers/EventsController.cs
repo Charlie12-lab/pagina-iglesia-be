@@ -1,6 +1,5 @@
-using System.Security.Claims;
-using IglesiaNet.API.DTOs;
-using IglesiaNet.API.Services;
+using IglesiaNet.Application.Events;
+using IglesiaNet.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,109 +9,86 @@ namespace IglesiaNet.API.Controllers;
 [Route("api/[controller]")]
 public class EventsController : ControllerBase
 {
-    private readonly EventService _eventService;
-
-    public EventsController(EventService eventService) => _eventService = eventService;
+    private readonly EventAppService _events;
+    public EventsController(EventAppService events) => _events = events;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int? churchId,
-        [FromQuery] DateTime? from,
-        [FromQuery] DateTime? to)
-    {
-        var events = await _eventService.GetAllAsync(churchId, from, to);
-        return Ok(events);
-    }
+        [FromQuery] int? churchId, [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to, CancellationToken ct) =>
+        Ok(await _events.GetAllAsync(churchId, from, to, ct));
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var ev = await _eventService.GetByIdAsync(id);
-        return ev is null ? NotFound() : Ok(ev);
+        var dto = await _events.GetByIdAsync(id, ct);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Create([FromBody] CreateEventRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateEventRequest request, CancellationToken ct)
     {
-        // ChurchAdmin solo puede crear eventos de su iglesia
-        if (User.IsInRole("ChurchAdmin"))
+        if (!IsAuthorizedForChurch(request.ChurchId)) return Forbid();
+        try
         {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != request.ChurchId)
-                return Forbid();
+            var dto = await _events.CreateAsync(request, ct);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
-
-        var ev = await _eventService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = ev.Id }, ev);
+        catch (DomainException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateEventRequest request)
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateEventRequest request, CancellationToken ct)
     {
-        var existing = await _eventService.GetByIdAsync(id);
+        var existing = await _events.GetByIdAsync(id, ct);
         if (existing is null) return NotFound();
-
-        if (User.IsInRole("ChurchAdmin"))
+        if (!IsAuthorizedForChurch(existing.ChurchId)) return Forbid();
+        try
         {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != existing.ChurchId)
-                return Forbid();
+            var dto = await _events.UpdateAsync(id, request, ct);
+            return dto is null ? NotFound() : Ok(dto);
         }
-
-        var ev = await _eventService.UpdateAsync(id, request);
-        return ev is null ? NotFound() : Ok(ev);
+        catch (DomainException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var existing = await _eventService.GetByIdAsync(id);
+        var existing = await _events.GetByIdAsync(id, ct);
         if (existing is null) return NotFound();
-
-        if (User.IsInRole("ChurchAdmin"))
-        {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != existing.ChurchId)
-                return Forbid();
-        }
-
-        await _eventService.DeleteAsync(id);
+        if (!IsAuthorizedForChurch(existing.ChurchId)) return Forbid();
+        await _events.DeleteAsync(id, ct);
         return NoContent();
     }
 
     [HttpPost("{id}/register")]
-    public async Task<IActionResult> Register(int id, [FromBody] EventRegistrationRequest request)
+    public async Task<IActionResult> Register(int id, [FromBody] EventRegistrationRequest request, CancellationToken ct)
     {
         try
         {
-            var reg = await _eventService.RegisterAsync(id, request);
-            if (reg is null) return BadRequest(new { message = "El evento no permite inscripciones" });
+            var reg = await _events.RegisterAsync(id, request, ct);
             return Ok(reg);
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        catch (DomainException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}/registrations")]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> GetRegistrations(int id)
+    public async Task<IActionResult> GetRegistrations(int id, CancellationToken ct)
     {
-        var existing = await _eventService.GetByIdAsync(id);
+        var existing = await _events.GetByIdAsync(id, ct);
         if (existing is null) return NotFound();
+        if (!IsAuthorizedForChurch(existing.ChurchId)) return Forbid();
+        return Ok(await _events.GetRegistrationsAsync(id, ct));
+    }
 
-        if (User.IsInRole("ChurchAdmin"))
-        {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != existing.ChurchId)
-                return Forbid();
-        }
-
-        var registrations = await _eventService.GetRegistrationsAsync(id);
-        return Ok(registrations);
+    private bool IsAuthorizedForChurch(int churchId)
+    {
+        if (User.IsInRole("SuperAdmin")) return true;
+        var claim = User.FindFirst("churchId")?.Value;
+        return int.TryParse(claim, out var userChurchId) && userChurchId == churchId;
     }
 }

@@ -1,9 +1,7 @@
-using IglesiaNet.API.Data;
-using IglesiaNet.API.DTOs;
-using IglesiaNet.API.Services;
+using IglesiaNet.Application.Blogs;
+using IglesiaNet.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace IglesiaNet.API.Controllers;
 
@@ -11,87 +9,66 @@ namespace IglesiaNet.API.Controllers;
 [Route("api/[controller]")]
 public class BlogsController : ControllerBase
 {
-    private readonly BlogService _blogService;
-    private readonly AppDbContext _db;
-
-    public BlogsController(BlogService blogService, AppDbContext db)
-    {
-        _blogService = blogService;
-        _db = db;
-    }
+    private readonly BlogAppService _blogs;
+    public BlogsController(BlogAppService blogs) => _blogs = blogs;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? churchId)
+    public async Task<IActionResult> GetAll([FromQuery] int? churchId, CancellationToken ct)
     {
-        var isAdmin = User.Identity?.IsAuthenticated == true;
-        var posts = await _blogService.GetAllAsync(churchId, onlyPublished: !isAdmin);
-        return Ok(posts);
+        var onlyPublished = User.Identity?.IsAuthenticated != true;
+        return Ok(await _blogs.GetAllAsync(churchId, onlyPublished, ct));
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    public async Task<IActionResult> GetById(string id, CancellationToken ct)
     {
-        var post = await _blogService.GetByIdAsync(id);
-        return post is null ? NotFound() : Ok(post);
+        var dto = await _blogs.GetByIdAsync(id, ct);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Create([FromBody] CreateBlogPostRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateBlogPostRequest request, CancellationToken ct)
     {
-        if (User.IsInRole("ChurchAdmin"))
+        if (!IsAuthorizedForChurch(request.ChurchId)) return Forbid();
+        try
         {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != request.ChurchId)
-                return Forbid();
+            var dto = await _blogs.CreateAsync(request, ct);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
-
-        var church = await _db.Churches.FindAsync(request.ChurchId);
-        if (church is null) return BadRequest(new { message = "Iglesia no encontrada" });
-
-        // Inyectamos el nombre de la iglesia para desnormalizar en MongoDB
-        var requestWithChurch = request with { };
-        var post = await _blogService.CreateAsync(requestWithChurch);
-
-        // Actualizamos el nombre de la iglesia directamente
-        var updateRequest = new UpdateBlogPostRequest(null, null, null, null, null, null, null, null);
-        return CreatedAtAction(nameof(GetById), new { id = post.Id }, post);
+        catch (DomainException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Update(string id, [FromBody] UpdateBlogPostRequest request)
+    public async Task<IActionResult> Update(string id, [FromBody] UpdateBlogPostRequest request, CancellationToken ct)
     {
-        var existing = await _blogService.GetByIdAsync(id);
+        var existing = await _blogs.GetByIdAsync(id, ct);
         if (existing is null) return NotFound();
-
-        if (User.IsInRole("ChurchAdmin"))
+        if (!IsAuthorizedForChurch(existing.ChurchId)) return Forbid();
+        try
         {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != existing.ChurchId)
-                return Forbid();
+            var dto = await _blogs.UpdateAsync(id, request, ct);
+            return dto is null ? NotFound() : Ok(dto);
         }
-
-        var church = await _db.Churches.FindAsync(existing.ChurchId);
-        var post = await _blogService.UpdateAsync(id, request, church?.Name ?? "");
-        return post is null ? NotFound() : Ok(post);
+        catch (DomainException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "SuperAdmin,ChurchAdmin")]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Delete(string id, CancellationToken ct)
     {
-        var existing = await _blogService.GetByIdAsync(id);
+        var existing = await _blogs.GetByIdAsync(id, ct);
         if (existing is null) return NotFound();
-
-        if (User.IsInRole("ChurchAdmin"))
-        {
-            var churchIdClaim = User.FindFirst("churchId")?.Value;
-            if (!int.TryParse(churchIdClaim, out int adminChurchId) || adminChurchId != existing.ChurchId)
-                return Forbid();
-        }
-
-        await _blogService.DeleteAsync(id);
+        if (!IsAuthorizedForChurch(existing.ChurchId)) return Forbid();
+        await _blogs.DeleteAsync(id, ct);
         return NoContent();
+    }
+
+    private bool IsAuthorizedForChurch(int churchId)
+    {
+        if (User.IsInRole("SuperAdmin")) return true;
+        var claim = User.FindFirst("churchId")?.Value;
+        return int.TryParse(claim, out var userChurchId) && userChurchId == churchId;
     }
 }
