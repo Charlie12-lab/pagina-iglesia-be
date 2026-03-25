@@ -16,9 +16,14 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await _auth.LoginAsync(request, ct);
-        return result is null
-            ? Unauthorized(new { message = "Credenciales incorrectas" })
-            : Ok(result);
+        if (result.IsSuccess) return Ok(result.Response);
+
+        return result.ErrorCode switch
+        {
+            "not_admin"   => StatusCode(403, new { message = "Tu cuenta no tiene permisos de administrador." }),
+            "wrong_church"=> StatusCode(403, new { message = "No administras esta iglesia." }),
+            _             => Unauthorized(new { message = "Correo o contraseña incorrectos." })
+        };
     }
 
     [HttpPost("users")]

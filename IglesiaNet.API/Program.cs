@@ -103,11 +103,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── Auto-migrar SQL Server ──────────────────────────────────────────────────
+// ─── Auto-migrar + Seed ──────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     db.Database.Migrate();
+    await DbSeeder.SeedAsync(db, hasher);
 }
 
 if (app.Environment.IsDevelopment())

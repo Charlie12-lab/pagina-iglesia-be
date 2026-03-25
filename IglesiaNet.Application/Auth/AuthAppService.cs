@@ -16,14 +16,28 @@ public class AuthAppService
         _jwt = jwt;
     }
 
-    public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await _users.GetByEmailAsync(request.Email.ToLowerInvariant(), ct);
-        if (user is null || !user.IsActive) return null;
-        if (!_hasher.Verify(request.Password, user.PasswordHash)) return null;
+        if (user is null || !user.IsActive) return LoginResult.Fail("invalid_credentials");
+        if (!_hasher.Verify(request.Password, user.PasswordHash)) return LoginResult.Fail("invalid_credentials");
+
+        // Validar que tenga rol admin si se requiere
+        if (request.ExpectAdmin &&
+            user.Role != UserRole.SuperAdmin &&
+            user.Role != UserRole.ChurchAdmin)
+            return LoginResult.Fail("not_admin");
+
+        // ChurchAdmin: validar que administra la iglesia seleccionada
+        if (request.ExpectAdmin && request.ChurchId.HasValue && user.Role == UserRole.ChurchAdmin)
+        {
+            if (user.ChurchId != request.ChurchId)
+                return LoginResult.Fail("wrong_church");
+        }
 
         var token = _jwt.Generate(user);
-        return new LoginResponse(token, user.Username, user.Role.ToString(), user.ChurchId, null);
+        var response = new LoginResponse(token, user.Username, user.Email, user.Role.ToString(), user.ChurchId, null);
+        return LoginResult.Ok(response);
     }
 
     public async Task<int> CreateUserAsync(CreateUserRequest request, CancellationToken ct = default)
