@@ -37,7 +37,7 @@ public class BlogAppService
             request.Title, request.Content, request.Excerpt,
             request.Author, request.ChurchId, church.Name,
             request.CoverImageUrl, request.ImageUrls, request.Tags,
-            request.IsPublished);
+            request.IsPublished, request.Category);
 
         await _blogs.AddAsync(post, ct);
         return BlogPostDto.From(post);
@@ -50,7 +50,7 @@ public class BlogAppService
 
         post.Update(request.Title, request.Content, request.Excerpt,
             request.Author, request.CoverImageUrl, request.ImageUrls,
-            request.Tags, request.IsPublished);
+            request.Tags, request.IsPublished, request.Category);
 
         await _blogs.UpdateAsync(post, ct);
         return BlogPostDto.From(post);

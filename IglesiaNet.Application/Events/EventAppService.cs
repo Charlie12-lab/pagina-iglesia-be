@@ -48,7 +48,8 @@ public class EventAppService
             request.StartDate, request.EndDate,
             request.AllowsRegistration, request.MaxAttendees,
             request.Location, request.ImageUrl,
-            request.IsPublished, request.ChurchId);
+            request.IsPublished, request.ChurchId,
+            request.EventType, request.Modality);
 
         await _events.AddAsync(ev, ct);
         await _events.SaveChangesAsync(ct);
@@ -63,7 +64,8 @@ public class EventAppService
         ev.Update(request.Title, request.Description,
             request.StartDate, request.EndDate,
             request.AllowsRegistration, request.MaxAttendees,
-            request.Location, request.ImageUrl, request.IsPublished);
+            request.Location, request.ImageUrl, request.IsPublished,
+            request.EventType, request.Modality);
 
         await _events.UpdateAsync(ev, ct);
         await _events.SaveChangesAsync(ct);

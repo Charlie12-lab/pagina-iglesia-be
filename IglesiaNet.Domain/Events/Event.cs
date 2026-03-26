@@ -13,6 +13,9 @@ public class Event : Entity<int>
     public bool IsPublished { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public int ChurchId { get; private set; }
+    // Nuevos campos
+    public string? EventType { get; private set; }  // Vigilia|Conferencia|Campamento|Campaña|Aniversario|Otros
+    public string? Modality { get; private set; }   // Presencial|Online|Híbrido
 
     private readonly List<EventRegistration> _registrations = new();
     public IReadOnlyCollection<EventRegistration> Registrations => _registrations.AsReadOnly();
@@ -28,7 +31,8 @@ public class Event : Entity<int>
     private Event(
         string title, string? description, EventSchedule schedule,
         EventCapacity capacity, string? location, string? imageUrl,
-        bool isPublished, int churchId) : base()
+        bool isPublished, int churchId,
+        string? eventType, string? modality) : base()
     {
         Title = title;
         Description = description;
@@ -39,12 +43,15 @@ public class Event : Entity<int>
         IsPublished = isPublished;
         ChurchId = churchId;
         CreatedAt = DateTime.UtcNow;
+        EventType = eventType;
+        Modality = modality;
     }
 
     public static Event Create(
         string title, string? description, DateTime startDate, DateTime? endDate,
         bool allowsRegistration, int? maxAttendees,
-        string? location, string? imageUrl, bool isPublished, int churchId)
+        string? location, string? imageUrl, bool isPublished, int churchId,
+        string? eventType = null, string? modality = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("El título del evento es requerido");
@@ -53,13 +60,15 @@ public class Event : Entity<int>
         var capacity = EventCapacity.Create(allowsRegistration, maxAttendees);
 
         return new Event(title.Trim(), description?.Trim(), schedule, capacity,
-            location?.Trim(), imageUrl?.Trim(), isPublished, churchId);
+            location?.Trim(), imageUrl?.Trim(), isPublished, churchId,
+            eventType?.Trim(), modality?.Trim());
     }
 
     public void Update(
         string? title, string? description, DateTime? startDate, DateTime? endDate,
         bool? allowsRegistration, int? maxAttendees,
-        string? location, string? imageUrl, bool? isPublished)
+        string? location, string? imageUrl, bool? isPublished,
+        string? eventType = null, string? modality = null)
     {
         if (title is not null)
         {
@@ -72,6 +81,8 @@ public class Event : Entity<int>
         if (location is not null) Location = location.Trim();
         if (imageUrl is not null) ImageUrl = imageUrl.Trim();
         if (isPublished.HasValue) IsPublished = isPublished.Value;
+        if (eventType is not null) EventType = eventType.Trim();
+        if (modality is not null) Modality = modality.Trim();
 
         if (startDate.HasValue || endDate.HasValue)
         {

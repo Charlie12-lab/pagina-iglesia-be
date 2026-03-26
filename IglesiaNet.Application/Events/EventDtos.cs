@@ -7,14 +7,16 @@ public record EventDto(
     int Id, string Title, string? Description,
     DateTime StartDate, DateTime? EndDate, string? Location, string? ImageUrl,
     bool AllowsRegistration, int? MaxAttendees, int CurrentAttendees,
-    bool IsPublished, int ChurchId, string ChurchName, string? ChurchLogoUrl
+    bool IsPublished, int ChurchId, string ChurchName, string? ChurchLogoUrl,
+    string? EventType, string? Modality
 )
 {
     public static EventDto From(Event e, string churchName, string? churchLogoUrl) => new(
         e.Id, e.Title, e.Description,
         e.Schedule.StartDate, e.Schedule.EndDate, e.Location, e.ImageUrl,
         e.Capacity.AllowsRegistration, e.Capacity.MaxAttendees, e.Registrations.Count,
-        e.IsPublished, e.ChurchId, churchName, churchLogoUrl);
+        e.IsPublished, e.ChurchId, churchName, churchLogoUrl,
+        e.EventType, e.Modality);
 }
 
 public record CreateEventRequest(
@@ -27,14 +29,17 @@ public record CreateEventRequest(
     string? Location,
     string? ImageUrl,
     bool IsPublished,
-    [Required] int ChurchId
+    [Required] int ChurchId,
+    string? EventType,
+    string? Modality
 );
 
 public record UpdateEventRequest(
     string? Title, string? Description,
     DateTime? StartDate, DateTime? EndDate,
     bool? AllowsRegistration, int? MaxAttendees,
-    string? Location, string? ImageUrl, bool? IsPublished
+    string? Location, string? ImageUrl, bool? IsPublished,
+    string? EventType, string? Modality
 );
 
 public record EventRegistrationRequest(

@@ -26,7 +26,9 @@ public class ChurchAppService
         var church = Church.Create(
             request.Name, request.Address, request.City,
             request.Phone, request.Email, request.Description,
-            request.LogoUrl, request.WebsiteUrl);
+            request.LogoUrl, request.WebsiteUrl,
+            request.Denomination, request.Status,
+            request.PastorName, request.PastorEmail);
 
         await _churches.AddAsync(church, ct);
         await _churches.SaveChangesAsync(ct);
@@ -40,7 +42,9 @@ public class ChurchAppService
 
         church.Update(request.Name, request.Address, request.City,
             request.Phone, request.Email, request.Description,
-            request.LogoUrl, request.WebsiteUrl, request.IsActive);
+            request.LogoUrl, request.WebsiteUrl, request.IsActive,
+            request.Denomination, request.Status,
+            request.PastorName, request.PastorEmail);
 
         await _churches.UpdateAsync(church, ct);
         await _churches.SaveChangesAsync(ct);

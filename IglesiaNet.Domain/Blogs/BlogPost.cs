@@ -16,6 +16,8 @@ public class BlogPost : Entity<string>
     public BlogPublication Publication { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+    // Nuevo campo
+    public string? Category { get; private set; }
 
     // Para MongoDB / EF sin constructores públicos
     private BlogPost() : base()
@@ -28,7 +30,7 @@ public class BlogPost : Entity<string>
     private BlogPost(string id, string title, string content, string? excerpt,
         string author, int churchId, string churchName,
         string? coverImageUrl, List<string> imageUrls, List<string> tags,
-        bool isPublished) : base(id)
+        bool isPublished, string? category) : base(id)
     {
         Title = title; Content = content; Excerpt = excerpt;
         Author = author; ChurchId = churchId; ChurchName = churchName;
@@ -36,12 +38,14 @@ public class BlogPost : Entity<string>
         Publication = isPublished ? BlogPublication.Published() : BlogPublication.Draft();
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
+        Category = category;
     }
 
     public static BlogPost Create(
         string title, string content, string? excerpt,
         string author, int churchId, string churchName,
-        string? coverImageUrl, List<string>? imageUrls, List<string>? tags, bool isPublished)
+        string? coverImageUrl, List<string>? imageUrls, List<string>? tags, bool isPublished,
+        string? category = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("El título del blog es requerido");
@@ -53,11 +57,13 @@ public class BlogPost : Entity<string>
         var id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
         return new BlogPost(id, title.Trim(), content, excerpt?.Trim(),
             author.Trim(), churchId, churchName,
-            coverImageUrl?.Trim(), imageUrls ?? new(), tags ?? new(), isPublished);
+            coverImageUrl?.Trim(), imageUrls ?? new(), tags ?? new(), isPublished,
+            category?.Trim());
     }
 
     public void Update(string? title, string? content, string? excerpt,
-        string? author, string? coverImageUrl, List<string>? imageUrls, List<string>? tags, bool? isPublished)
+        string? author, string? coverImageUrl, List<string>? imageUrls, List<string>? tags, bool? isPublished,
+        string? category = null)
     {
         if (title is not null)
         {
@@ -77,6 +83,7 @@ public class BlogPost : Entity<string>
         if (isPublished.HasValue) Publication = isPublished.Value
             ? Publication.Publish()
             : Publication.Unpublish();
+        if (category is not null) Category = category.Trim();
 
         UpdatedAt = DateTime.UtcNow;
     }
