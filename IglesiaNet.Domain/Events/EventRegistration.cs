@@ -36,14 +36,15 @@ public class EventRegistration : Entity<int>
         RegisteredAt = DateTime.UtcNow;
     }
 
-    // Inscripción individual — email requerido y validado
+    // Inscripción individual — email opcional, validado solo si se provee
     internal static EventRegistration CreateIndividual(
-        int eventId, string fullName, string email,
+        int eventId, string fullName, string? email,
         string? phone, string? notes, string? church, string? voucherPath)
     {
         if (string.IsNullOrWhiteSpace(fullName))
             throw new DomainException("El nombre completo es requerido");
-        Shared.Email.Create(email);
+        if (!string.IsNullOrWhiteSpace(email))
+            Shared.Email.Create(email);
 
         return new EventRegistration(eventId, fullName, email, phone, notes, church, voucherPath, null);
     }

@@ -107,7 +107,7 @@ public class Event : Entity<int>
 
     // Inscripción individual
     public EventRegistration Register(
-        string fullName, string email, string? phone, string? notes,
+        string fullName, string? email, string? phone, string? notes,
         string? church = null, string? voucherPath = null)
     {
         if (!Capacity.AllowsRegistration)

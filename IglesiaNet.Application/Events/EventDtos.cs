@@ -46,7 +46,7 @@ public record UpdateEventRequest(
 // ── Inscripción individual ────────────────────────────────────────────────────
 public record EventRegistrationRequest(
     [Required, MaxLength(200)] string FullName,
-    [Required] string Email,
+    string? Email,
     string? Phone,
     string? Notes,
     string? Church

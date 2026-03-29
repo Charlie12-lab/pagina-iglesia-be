@@ -1,4 +1,5 @@
 using System.Text;
+using IglesiaNet.API.Middleware;
 using IglesiaNet.Application.Auth;
 using IglesiaNet.Application.Blogs;
 using IglesiaNet.Application.Churches;
@@ -118,6 +119,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 
 // Garantizar que wwwroot exista y esté registrado antes de servir archivos estáticos
