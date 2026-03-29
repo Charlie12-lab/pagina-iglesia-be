@@ -12,6 +12,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Title).IsRequired().HasMaxLength(300);
         builder.Property(e => e.Location).HasMaxLength(300);
         builder.Property(e => e.ImageUrl).HasMaxLength(500);
+        builder.Property(e => e.Price).HasColumnType("decimal(10,2)");
 
         // Owned Value Objects — se mapean a columnas de la misma tabla
         builder.OwnsOne(e => e.Schedule, s =>
@@ -42,8 +43,11 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
     {
         builder.HasKey(r => r.Id);
         builder.Property(r => r.FullName).IsRequired().HasMaxLength(200);
-        builder.Property(r => r.Email).IsRequired().HasMaxLength(200);
-        builder.Property(r => r.Phone).HasMaxLength(20);
+        builder.Property(r => r.Email).HasMaxLength(200);  // nullable — miembros grupales
+        builder.Property(r => r.Phone).HasMaxLength(50);
+        builder.Property(r => r.Church).HasMaxLength(300);
+        builder.Property(r => r.VoucherPath).HasMaxLength(500);
+        builder.Property(r => r.GroupId).HasMaxLength(36);
 
         builder.HasIndex(r => r.EventId);
         builder.HasIndex(r => r.Email);

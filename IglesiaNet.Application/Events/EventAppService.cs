@@ -49,7 +49,7 @@ public class EventAppService
             request.AllowsRegistration, request.MaxAttendees,
             request.Location, request.ImageUrl,
             request.IsPublished, request.ChurchId,
-            request.EventType, request.Modality);
+            request.EventType, request.Modality, request.Price);
 
         await _events.AddAsync(ev, ct);
         await _events.SaveChangesAsync(ct);
@@ -65,7 +65,7 @@ public class EventAppService
             request.StartDate, request.EndDate,
             request.AllowsRegistration, request.MaxAttendees,
             request.Location, request.ImageUrl, request.IsPublished,
-            request.EventType, request.Modality);
+            request.EventType, request.Modality, request.Price);
 
         await _events.UpdateAsync(ev, ct);
         await _events.SaveChangesAsync(ct);
@@ -84,17 +84,34 @@ public class EventAppService
     }
 
     public async Task<EventRegistrationDto> RegisterAsync(
-        int eventId, EventRegistrationRequest request, CancellationToken ct = default)
+        int eventId, EventRegistrationRequest request,
+        string? voucherPath, CancellationToken ct = default)
     {
         var ev = await _events.GetByIdAsync(eventId, ct)
             ?? throw new DomainException("El evento no existe");
 
-        // La lógica de validación vive en el Aggregate
-        var registration = ev.Register(request.FullName, request.Email, request.Phone, request.Notes);
+        var registration = ev.Register(
+            request.FullName, request.Email, request.Phone,
+            request.Notes, request.Church, voucherPath);
 
         await _events.UpdateAsync(ev, ct);
         await _events.SaveChangesAsync(ct);
         return EventRegistrationDto.From(registration);
+    }
+
+    public async Task<List<EventRegistrationDto>> RegisterGroupAsync(
+        int eventId, GroupRegistrationRequest request,
+        string? voucherPath, CancellationToken ct = default)
+    {
+        var ev = await _events.GetByIdAsync(eventId, ct)
+            ?? throw new DomainException("El evento no existe");
+
+        var members = request.Members.Select(m => (m.FullName, m.Email, m.Phone));
+        var registrations = ev.RegisterGroup(members, request.Church, voucherPath);
+
+        await _events.UpdateAsync(ev, ct);
+        await _events.SaveChangesAsync(ct);
+        return registrations.Select(EventRegistrationDto.From).ToList();
     }
 
     public async Task<List<EventRegistrationDto>> GetRegistrationsAsync(int eventId, CancellationToken ct = default)

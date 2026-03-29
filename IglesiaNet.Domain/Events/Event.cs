@@ -16,6 +16,7 @@ public class Event : Entity<int>
     // Nuevos campos
     public string? EventType { get; private set; }  // Vigilia|Conferencia|Campamento|Campaña|Aniversario|Otros
     public string? Modality { get; private set; }   // Presencial|Online|Híbrido
+    public decimal? Price { get; private set; }     // null o 0 = gratuito
 
     private readonly List<EventRegistration> _registrations = new();
     public IReadOnlyCollection<EventRegistration> Registrations => _registrations.AsReadOnly();
@@ -32,7 +33,7 @@ public class Event : Entity<int>
         string title, string? description, EventSchedule schedule,
         EventCapacity capacity, string? location, string? imageUrl,
         bool isPublished, int churchId,
-        string? eventType, string? modality) : base()
+        string? eventType, string? modality, decimal? price) : base()
     {
         Title = title;
         Description = description;
@@ -45,13 +46,14 @@ public class Event : Entity<int>
         CreatedAt = DateTime.UtcNow;
         EventType = eventType;
         Modality = modality;
+        Price = price is > 0 ? price : null;
     }
 
     public static Event Create(
         string title, string? description, DateTime startDate, DateTime? endDate,
         bool allowsRegistration, int? maxAttendees,
         string? location, string? imageUrl, bool isPublished, int churchId,
-        string? eventType = null, string? modality = null)
+        string? eventType = null, string? modality = null, decimal? price = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("El título del evento es requerido");
@@ -61,14 +63,14 @@ public class Event : Entity<int>
 
         return new Event(title.Trim(), description?.Trim(), schedule, capacity,
             location?.Trim(), imageUrl?.Trim(), isPublished, churchId,
-            eventType?.Trim(), modality?.Trim());
+            eventType?.Trim(), modality?.Trim(), price);
     }
 
     public void Update(
         string? title, string? description, DateTime? startDate, DateTime? endDate,
         bool? allowsRegistration, int? maxAttendees,
         string? location, string? imageUrl, bool? isPublished,
-        string? eventType = null, string? modality = null)
+        string? eventType = null, string? modality = null, decimal? price = null)
     {
         if (title is not null)
         {
@@ -83,6 +85,7 @@ public class Event : Entity<int>
         if (isPublished.HasValue) IsPublished = isPublished.Value;
         if (eventType is not null) EventType = eventType.Trim();
         if (modality is not null) Modality = modality.Trim();
+        if (price.HasValue) Price = price.Value > 0 ? price.Value : null;
 
         if (startDate.HasValue || endDate.HasValue)
         {
@@ -102,8 +105,10 @@ public class Event : Entity<int>
     public void Publish() => IsPublished = true;
     public void Unpublish() => IsPublished = false;
 
-    // Lógica de dominio: la validación vive aquí, no en un servicio
-    public EventRegistration Register(string fullName, string email, string? phone, string? notes)
+    // Inscripción individual
+    public EventRegistration Register(
+        string fullName, string email, string? phone, string? notes,
+        string? church = null, string? voucherPath = null)
     {
         if (!Capacity.AllowsRegistration)
             throw new DomainException("Este evento no acepta inscripciones");
@@ -111,8 +116,33 @@ public class Event : Entity<int>
         if (!Capacity.CanAcceptRegistration(_registrations.Count))
             throw new DomainException("El evento ha alcanzado su capacidad máxima");
 
-        var registration = new EventRegistration(Id, fullName, email, phone, notes);
+        var registration = EventRegistration.CreateIndividual(Id, fullName, email, phone, notes, church, voucherPath);
         _registrations.Add(registration);
         return registration;
+    }
+
+    // Inscripción grupal — valida capacidad para el lote completo
+    public List<EventRegistration> RegisterGroup(
+        IEnumerable<(string FullName, string? Email, string? Phone)> members,
+        string? church, string? voucherPath)
+    {
+        if (!Capacity.AllowsRegistration)
+            throw new DomainException("Este evento no acepta inscripciones");
+
+        var memberList = members.ToList();
+        if (!Capacity.CanAcceptRegistration(_registrations.Count + memberList.Count - 1))
+            throw new DomainException("No hay suficientes cupos para el grupo");
+
+        var groupId = Guid.NewGuid().ToString("N");
+        var registrations = new List<EventRegistration>();
+
+        foreach (var (fullName, email, phone) in memberList)
+        {
+            var reg = EventRegistration.CreateGroupMember(Id, fullName, email, phone, church, voucherPath, groupId);
+            _registrations.Add(reg);
+            registrations.Add(reg);
+        }
+
+        return registrations;
     }
 }

@@ -8,7 +8,7 @@ public record EventDto(
     DateTime StartDate, DateTime? EndDate, string? Location, string? ImageUrl,
     bool AllowsRegistration, int? MaxAttendees, int CurrentAttendees,
     bool IsPublished, int ChurchId, string ChurchName, string? ChurchLogoUrl,
-    string? EventType, string? Modality
+    string? EventType, string? Modality, decimal? Price
 )
 {
     public static EventDto From(Event e, string churchName, string? churchLogoUrl) => new(
@@ -16,7 +16,7 @@ public record EventDto(
         e.Schedule.StartDate, e.Schedule.EndDate, e.Location, e.ImageUrl,
         e.Capacity.AllowsRegistration, e.Capacity.MaxAttendees, e.Registrations.Count,
         e.IsPublished, e.ChurchId, churchName, churchLogoUrl,
-        e.EventType, e.Modality);
+        e.EventType, e.Modality, e.Price);
 }
 
 public record CreateEventRequest(
@@ -31,7 +31,8 @@ public record CreateEventRequest(
     bool IsPublished,
     [Required] int ChurchId,
     string? EventType,
-    string? Modality
+    string? Modality,
+    decimal? Price
 );
 
 public record UpdateEventRequest(
@@ -39,21 +40,41 @@ public record UpdateEventRequest(
     DateTime? StartDate, DateTime? EndDate,
     bool? AllowsRegistration, int? MaxAttendees,
     string? Location, string? ImageUrl, bool? IsPublished,
-    string? EventType, string? Modality
+    string? EventType, string? Modality, decimal? Price
 );
 
+// ── Inscripción individual ────────────────────────────────────────────────────
 public record EventRegistrationRequest(
     [Required, MaxLength(200)] string FullName,
     [Required] string Email,
     string? Phone,
-    string? Notes
+    string? Notes,
+    string? Church
 );
 
+// ── Inscripción grupal ────────────────────────────────────────────────────────
+public record GroupMemberRequest(
+    [Required, MaxLength(200)] string FullName,
+    string? Email,
+    string? Phone
+);
+
+public record GroupRegistrationRequest(
+    [Required, MaxLength(200)] string Responsible,
+    [Required] string Email,
+    string? Phone,
+    string? Church,
+    [Required] List<GroupMemberRequest> Members
+);
+
+// ── DTOs de salida ────────────────────────────────────────────────────────────
 public record EventRegistrationDto(
-    int Id, string FullName, string Email,
-    string? Phone, string? Notes, DateTime RegisteredAt
+    int Id, string FullName, string? Email,
+    string? Phone, string? Notes, string? Church,
+    string? VoucherPath, string? GroupId, DateTime RegisteredAt
 )
 {
     public static EventRegistrationDto From(EventRegistration r) => new(
-        r.Id, r.FullName, r.Email, r.Phone, r.Notes, r.RegisteredAt);
+        r.Id, r.FullName, r.Email, r.Phone, r.Notes,
+        r.Church, r.VoucherPath, r.GroupId, r.RegisteredAt);
 }
