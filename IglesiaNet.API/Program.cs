@@ -119,6 +119,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Garantizar que wwwroot exista y esté registrado antes de servir archivos estáticos
+var wwwroot = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(wwwroot);
+if (string.IsNullOrEmpty(app.Environment.WebRootPath))
+    app.Environment.WebRootPath = wwwroot;
+
 app.UseStaticFiles();
 app.UseCors("Frontend");
 app.UseAuthentication();
