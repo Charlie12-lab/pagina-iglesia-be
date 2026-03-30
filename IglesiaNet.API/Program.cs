@@ -10,7 +10,6 @@ using IglesiaNet.Domain.Churches;
 using IglesiaNet.Domain.Events;
 using IglesiaNet.Domain.Users;
 using IglesiaNet.Infrastructure.Authentication;
-using IglesiaNet.Infrastructure.Persistence.MongoDB;
 using IglesiaNet.Infrastructure.Persistence.SQL;
 using IglesiaNet.Infrastructure.Persistence.SQL.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,9 +22,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ─── SQL Server (EF Core) ────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
-
-// ─── MongoDB ────────────────────────────────────────────────────────────────
-builder.Services.AddSingleton<MongoDbContext>();
 
 // ─── Repositorios (Infrastructure → Domain interfaces) ───────────────────────
 builder.Services.AddScoped<IChurchRepository, ChurchRepository>();

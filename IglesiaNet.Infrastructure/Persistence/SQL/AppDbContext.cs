@@ -1,3 +1,4 @@
+using IglesiaNet.Domain.Blogs;
 using IglesiaNet.Domain.Churches;
 using IglesiaNet.Domain.Events;
 using IglesiaNet.Domain.Users;
@@ -14,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Event> Events { get; set; }
     public DbSet<EventRegistration> EventRegistrations { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<BlogPost> BlogPosts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,5 +24,6 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EventConfiguration());
         modelBuilder.ApplyConfiguration(new EventRegistrationConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new BlogPostConfiguration());
     }
 }

@@ -19,7 +19,7 @@ public class BlogPost : Entity<string>
     // Nuevo campo
     public string? Category { get; private set; }
 
-    // Para MongoDB / EF sin constructores públicos
+    // Para EF Core sin constructores públicos
     private BlogPost() : base()
     {
         Title = string.Empty; Content = string.Empty;
@@ -54,7 +54,7 @@ public class BlogPost : Entity<string>
         if (string.IsNullOrWhiteSpace(author))
             throw new DomainException("El autor es requerido");
 
-        var id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        var id = Guid.NewGuid().ToString("N");
         return new BlogPost(id, title.Trim(), content, excerpt?.Trim(),
             author.Trim(), churchId, churchName,
             coverImageUrl?.Trim(), imageUrls ?? new(), tags ?? new(), isPublished,
