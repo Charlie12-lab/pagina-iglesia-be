@@ -12,7 +12,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Title).IsRequired().HasMaxLength(300);
         builder.Property(e => e.Location).HasMaxLength(300);
         builder.Property(e => e.ImageUrl).HasMaxLength(500);
-        builder.Property(e => e.Price).HasColumnType("decimal(10,2)");
+        builder.Property(e => e.Price).HasColumnType("numeric(10,2)");
 
         // Owned Value Objects — se mapean a columnas de la misma tabla
         builder.OwnsOne(e => e.Schedule, s =>

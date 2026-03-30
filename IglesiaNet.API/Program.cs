@@ -19,9 +19,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── SQL Server (EF Core) ────────────────────────────────────────────────────
+// ─── PostgreSQL (EF Core) ────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
 
 // ─── Repositorios (Infrastructure → Domain interfaces) ───────────────────────
 builder.Services.AddScoped<IChurchRepository, ChurchRepository>();

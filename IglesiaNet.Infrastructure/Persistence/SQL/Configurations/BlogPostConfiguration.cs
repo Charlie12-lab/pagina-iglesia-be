@@ -23,7 +23,7 @@ public class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
         b.Property(p => p.Id).HasMaxLength(32).ValueGeneratedNever();
 
         b.Property(p => p.Title).IsRequired().HasMaxLength(500);
-        b.Property(p => p.Content).IsRequired().HasColumnType("nvarchar(max)");
+        b.Property(p => p.Content).IsRequired().HasColumnType("text");
         b.Property(p => p.Excerpt).HasMaxLength(1000);
         b.Property(p => p.Author).IsRequired().HasMaxLength(200);
         b.Property(p => p.ChurchId);
@@ -33,19 +33,19 @@ public class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
         b.Property(p => p.CreatedAt);
         b.Property(p => p.UpdatedAt);
 
-        // Listas serializadas como JSON en una columna nvarchar(max)
+        // Listas serializadas como JSON en una columna text
         b.Property(p => p.ImageUrls)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, _json),
                 v => JsonSerializer.Deserialize<List<string>>(v, _json) ?? new List<string>())
-            .HasColumnType("nvarchar(max)")
+            .HasColumnType("text")
             .Metadata.SetValueComparer(_listComparer);
 
         b.Property(p => p.Tags)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, _json),
                 v => JsonSerializer.Deserialize<List<string>>(v, _json) ?? new List<string>())
-            .HasColumnType("nvarchar(max)")
+            .HasColumnType("text")
             .Metadata.SetValueComparer(_listComparer);
 
         // BlogPublication como owned (columnas planas: IsPublished, PublishedAt)
